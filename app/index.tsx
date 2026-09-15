@@ -19,9 +19,7 @@ import {
   scoreBoard,
   type Card,
 } from '@/logic/board';
-import { shouldShowInterstitial } from '@/monetization/adPolicy';
-import { shouldShowAds } from '@/monetization/entitlements';
-import { showInterstitial } from '@/monetization/interstitial';
+import { noteGameFinished } from '@/monetization/pacing';
 import { useBoardStore } from '@/store/useBoardStore';
 import { usePremiumStore } from '@/store/usePremiumStore';
 import { MIN_TOUCH_TARGET, useTheme, withAlpha } from '@/theme';
@@ -79,17 +77,7 @@ export default function Home() {
       setPlaying(false);
       finish(day, totalFlips, Date.now() - startedAt);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      if (
-        shouldShowAds({ isPremium, isReady }) &&
-        shouldShowInterstitial({
-          gamesPlayed: 1,
-          lastInterstitialAt: 0,
-          now: Date.now(),
-          adsRemoved: isPremium,
-        })
-      ) {
-        showInterstitial();
-      }
+      void noteGameFinished();
       setCards(finished);
     },
     [day, finish, startedAt, isPremium, isReady],
