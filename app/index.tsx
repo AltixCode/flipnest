@@ -179,7 +179,11 @@ export default function Home() {
                     width: cardSize,
                     height: cardSize,
                     borderRadius: radius.md,
-                    backgroundColor: shown ? withAlpha(colors.accent, 0.2) : colors.surface,
+                    // 0.38, not 0.2. At 0.2 a face-up card differed from a
+                    // face-down one by 1.45:1 in dark mode, which is close to
+                    // invisible; this gives 2.21:1 dark and 1.79:1 light while
+                    // keeping the face text above 7:1 on the tinted ground.
+                    backgroundColor: shown ? withAlpha(colors.accent, 0.38) : colors.surface,
                     borderColor: card.matched ? colors.accent : colors.border,
                     borderWidth: card.matched ? 2 : StyleSheet.hairlineWidth,
                   },
