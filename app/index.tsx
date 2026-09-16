@@ -118,6 +118,7 @@ export default function Home() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={{
           paddingTop: insets.top + spacing.base,
           paddingHorizontal: spacing.base,
@@ -180,8 +181,23 @@ export default function Home() {
               >
                 {/* The glyph, sized to the card. A fixed size here would be
                     the Worddrop keyboard bug again: the card grows on a tablet
-                    and the face would not. */}
-                <Text style={{ fontSize: Math.round(cardSize * 0.46) }}>
+                    and the face would not.
+
+                    lineHeight is not optional. An emoji's glyph box is taller
+                    than the default line box React Native derives from
+                    fontSize, so without this the face is clipped along the
+                    bottom -- the pear and lemon rendered as bottom-halves, and
+                    because the size is a fraction of cardSize it gets worse on
+                    a tablet, not better. textAlignVertical keeps Android from
+                    seating it on the baseline once the line box has slack. */}
+                <Text
+                  style={{
+                    fontSize: Math.round(cardSize * 0.46),
+                    lineHeight: Math.round(cardSize * 0.46 * 1.3),
+                    textAlign: 'center',
+                    textAlignVertical: 'center',
+                  }}
+                >
                   {shown ? (FACE_GLYPH[card.faceId] ?? '') : ''}
                 </Text>
               </Pressable>
