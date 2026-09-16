@@ -1,4 +1,5 @@
 import {
+  FACE_GLYPH,
   FREE_THEMES,
   THEMES,
   canUseTheme,
@@ -119,5 +120,26 @@ describe('themes', () => {
       seen.add(themeForDay(day));
     }
     expect(seen.size).toBe(THEMES.length);
+  });
+});
+
+describe('FACE_GLYPH', () => {
+  it('has an entry for every face in every theme', () => {
+    const missing = THEMES.flatMap((t) => t.faces).filter((f) => !FACE_GLYPH[f]);
+    expect(missing).toEqual([]);
+  });
+
+  it('gives no two faces the same glyph', () => {
+    // The bug this replaces: `faceId.slice(0, 2)` rendered "pe" for BOTH pear
+    // and peach, and collided again on rain/rainbow and storm/star -- two
+    // different cards looked identical, so the game was wrong rather than ugly.
+    const faces = THEMES.flatMap((t) => t.faces);
+    const byGlyph = new Map<string, string[]>();
+    for (const f of faces) {
+      const g = FACE_GLYPH[f] as string;
+      byGlyph.set(g, [...(byGlyph.get(g) ?? []), f]);
+    }
+    const clashes = [...byGlyph.entries()].filter(([, v]) => v.length > 1);
+    expect(clashes).toEqual([]);
   });
 });

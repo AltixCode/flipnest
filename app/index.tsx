@@ -11,6 +11,7 @@ import { t, type TranslationKey } from '@/i18n';
 import {
   PAIRS,
   THEMES,
+  FACE_GLYPH,
   canUseTheme,
   dayNumber,
   dealBoard,
@@ -177,7 +178,12 @@ export default function Home() {
                   },
                 ]}
               >
-                <Text variant="caption">{shown ? card.faceId.slice(0, 2) : ''}</Text>
+                {/* The glyph, sized to the card. A fixed size here would be
+                    the Worddrop keyboard bug again: the card grows on a tablet
+                    and the face would not. */}
+                <Text style={{ fontSize: Math.round(cardSize * 0.46) }}>
+                  {shown ? (FACE_GLYPH[card.faceId] ?? '') : ''}
+                </Text>
               </Pressable>
             );
           })}

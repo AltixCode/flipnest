@@ -22,6 +22,33 @@ export interface Theme {
 /** Pairs on a board. Twelve pairs is a 24-card grid: 4x6, which fits a phone. */
 export const PAIRS = 12;
 
+/**
+ * The picture on a card face.
+ *
+ * The board used to render `faceId.slice(0, 2)`, which showed "gr", "le", "be".
+ * That read as an unfinished prototype, and in two themes it was a genuine
+ * gameplay bug rather than a cosmetic one: `pear`/`peach` both rendered "pe",
+ * and `rain`/`rainbow` and `storm`/`star` both collided, so two different cards
+ * were indistinguishable and a player matching them by sight was simply wrong.
+ *
+ * A glyph rather than the word, because the word would be English on every one
+ * of the fourteen locales this app ships -- the face ids are identifiers, not
+ * copy, and there are no translations for them. A picture needs none.
+ *
+ * Every id in THEMES has an entry and no two ids share a glyph; both are
+ * asserted in the tests.
+ */
+export const FACE_GLYPH: Record<string, string> = {
+  apple: '🍎', pear: '🍐', plum: '🟣', cherry: '🍒', grape: '🍇', lemon: '🍋',
+  peach: '🍑', melon: '🍈', fig: '🫒', kiwi: '🥝', mango: '🥭', berry: '🫐',
+  sun: '☀️', cloud: '☁️', rain: '🌧️', snow: '❄️', storm: '⛈️', wind: '💨',
+  fog: '🌫️', rainbow: '🌈', hail: '🧊', moon: '🌙', star: '⭐', comet: '☄️',
+  rose: '🌹', tulip: '🌷', daisy: '🌼', fern: '🌿', ivy: '🍃', oak: '🌳',
+  pine: '🌲', moss: '🌱', clover: '🍀', thistle: '🌾', poppy: '🌺', lily: '🪷',
+  anchor: '⚓', buoy: '🛟', sail: '⛵', rope: '🪢', shell: '🐚', crab: '🦀',
+  gull: '🦅', lantern: '🏮', net: '🕸️', oar: '🛶', wave: '🌊', compass: '🧭',
+};
+
 export const THEMES: Theme[] = [
   {
     id: 'fruit',
