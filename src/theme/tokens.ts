@@ -79,7 +79,9 @@ export const lightPalette: Palette = {
   textMuted: '#5F5F66',
   textFaint: '#85858D',
   border: '#E6E6E1',
-  borderStrong: '#CFCFC8',
+  // 3.53:1 against the light background. A face-down tile is drawn with this,
+  // and a UI component boundary needs 3:1 under WCAG AA to be seen at all.
+  borderStrong: '#8A8278',
   accent: '#C2410C',
   onAccent: '#FFFFFF',
   success: '#059669',
@@ -98,7 +100,12 @@ export const darkPalette: Palette = {
   textMuted: '#A3A3AA',
   textFaint: '#6E6E76',
   border: '#26262A',
-  borderStrong: '#3A3A40',
+  // 3.21:1 against the dark background, in the palette's own warm brown. It
+  // was #3A3A40 at 1.71:1, and face-down tiles were drawn in `border` at
+  // 1.28:1 with a `surface` fill at 1.07:1 -- so the board was invisible. The
+  // live iPad screenshot shows one flipped tile and nineteen that are not
+  // there as far as a customer can tell.
+  borderStrong: '#71604D',
   accent: '#FB923C',
   onAccent: '#0C0C0D',
   success: '#10B981',

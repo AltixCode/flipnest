@@ -87,3 +87,28 @@ describe('palette accessibility', () => {
     expect(contrastRatio(accent, on)).toBeGreaterThanOrEqual(4.5);
   });
 });
+
+describe('the board is visible', () => {
+  /**
+   * At the start of a round every tile is face down, so the face-down state IS
+   * the board. It was drawn with a `surface` fill at 1.07:1 and a `border`
+   * outline at 1.28:1 against the background -- the live iPad screenshot shows
+   * one flipped tile and nineteen a customer cannot see.
+   *
+   * WCAG AA asks 3:1 for the boundary of a non-text UI component, which is
+   * exactly what a tile is.
+   */
+  const MIN_COMPONENT_CONTRAST = 3;
+
+  it('draws a face-down tile against the dark background at 3:1 or better', () => {
+    expect(
+      contrastRatio(darkPalette.borderStrong, darkPalette.background)
+    ).toBeGreaterThanOrEqual(MIN_COMPONENT_CONTRAST);
+  });
+
+  it('draws a face-down tile against the light background at 3:1 or better', () => {
+    expect(
+      contrastRatio(lightPalette.borderStrong, lightPalette.background)
+    ).toBeGreaterThanOrEqual(MIN_COMPONENT_CONTRAST);
+  });
+});

@@ -177,7 +177,10 @@ export default function Home() {
                     // invisible; this gives 2.21:1 dark and 1.79:1 light while
                     // keeping the face text above 7:1 on the tinted ground.
                     backgroundColor: shown ? withAlpha(colors.accent, 0.38) : colors.surface,
-                    borderColor: card.matched ? colors.accent : colors.border,
+                    // A FACE-DOWN tile is the board: at the start of a round every
+                    // tile is face down, so if that state cannot be seen there is
+                    // nothing on screen. `border` is 1.28:1 against the background.
+                    borderColor: card.matched ? colors.accent : colors.borderStrong,
                     borderWidth: card.matched ? 2 : StyleSheet.hairlineWidth,
                   },
                 ]}
