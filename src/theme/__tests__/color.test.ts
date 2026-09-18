@@ -1,5 +1,6 @@
 import { contrastRatio, luminance, mix, readableTextOn, withAlpha } from '../color';
 import { darkPalette, lightPalette } from '../tokens';
+import { darkPalette, lightPalette } from '../tokens';
 
 describe('mix', () => {
   it('returns the background at 0 and the colour at 1', () => {
@@ -88,25 +89,30 @@ describe('palette accessibility', () => {
   });
 });
 
-describe('the board is visible', () => {
+describe('a component boundary can be seen', () => {
   /**
-   * At the start of a round every tile is face down, so the face-down state IS
-   * the board. It was drawn with a `surface` fill at 1.07:1 and a `border`
-   * outline at 1.28:1 against the background -- the live iPad screenshot shows
-   * one flipped tile and nineteen a customer cannot see.
+   * WCAG AA asks 3:1 for the boundary of a non-text UI component. A card, a
+   * board cell and a tile are all exactly that, and in this template they are
+   * drawn with `borderStrong`.
    *
-   * WCAG AA asks 3:1 for the boundary of a non-text UI component, which is
-   * exactly what a tile is.
+   * This test exists because the portfolio shipped without it. `surface` sits
+   * about 1.1:1 against `background` and `border` about 1.3:1, so a board drawn
+   * with either is invisible in dark mode -- and two live App Store screenshots
+   * showed grids with more than 70% of the frame indistinguishable from its own
+   * background. The screenshots were accurate; the apps were unreadable.
+   *
+   * The dark background is substituted per app, so this assertion is the only
+   * thing that holds the guarantee once the template has been copied.
    */
   const MIN_COMPONENT_CONTRAST = 3;
 
-  it('draws a face-down tile against the dark background at 3:1 or better', () => {
+  it('keeps borderStrong at 3:1 against the dark background', () => {
     expect(
       contrastRatio(darkPalette.borderStrong, darkPalette.background)
     ).toBeGreaterThanOrEqual(MIN_COMPONENT_CONTRAST);
   });
 
-  it('draws a face-down tile against the light background at 3:1 or better', () => {
+  it('keeps borderStrong at 3:1 against the light background', () => {
     expect(
       contrastRatio(lightPalette.borderStrong, lightPalette.background)
     ).toBeGreaterThanOrEqual(MIN_COMPONENT_CONTRAST);
