@@ -1,0 +1,35 @@
+{
+  "identifier": "F2032152-CDA5-492B-BC8F-B57B826A4F8B",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "4.99",
+      "familyShareable": false,
+      "internalID": "69D5DEE6-7C7A-4691-9670-F397AD87A46F",
+      "localizations": [
+        {
+          "description": "flipnest remove ads lifetime unlock",
+          "displayName": "flipnest remove ads",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "com.altixcode.flipnest.removeads",
+      "referenceName": "flipnest remove ads",
+      "type": "NonConsumable"
+    }
+  ],
+  "settings": {
+    "_applicationInternalID": "",
+    "_developerTeamID": "",
+    "_failTransactionsEnabled": false,
+    "_lastSynchronizedDate": 0,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 4,
+    "minor": 0
+  }
+}
