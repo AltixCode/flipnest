@@ -1,13 +1,14 @@
-import Feather from '@expo/vector-icons/Feather';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Feather from "@expo/vector-icons/Feather";
+import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BannerAdSlot } from '@/components/BannerAdSlot';
-import { Button, Card as Surface, Text } from '@/components/ui';
-import { t, type TranslationKey } from '@/i18n';
+import { BannerAdSlot } from "@/components/BannerAdSlot";
+import { Button, Card as Surface, Text } from "@/components/ui";
+import { fetchThemeFor } from "@/content/sync";
+import { t, type TranslationKey } from "@/i18n";
 import {
   PAIRS,
   THEMES,
@@ -19,15 +20,15 @@ import {
   isPair,
   scoreBoard,
   type Card,
-} from '@/logic/board';
-import { noteGameFinished } from '@/monetization/pacing';
-import { useBoardStore } from '@/store/useBoardStore';
-import { usePremiumStore } from '@/store/usePremiumStore';
-import { MIN_TOUCH_TARGET, useTheme, withAlpha } from '@/theme';
-import { useTabletColumn } from '@/theme/useTabletColumn';
+} from "@/logic/board";
+import { noteGameFinished } from "@/monetization/pacing";
+import { useBoardStore } from "@/store/useBoardStore";
+import { usePremiumStore } from "@/store/usePremiumStore";
+import { MIN_TOUCH_TARGET, useTheme, withAlpha } from "@/theme";
+import { useTabletColumn } from "@/theme/useTabletColumn";
 
 const COLUMNS = 4;
-const ROWS = PAIRS * 2 / COLUMNS;
+const ROWS = (PAIRS * 2) / COLUMNS;
 /** How long a mismatched pair stays visible before flipping back. */
 const PEEK_MS = 800;
 
@@ -41,6 +42,7 @@ export default function Home() {
   const isReady = usePremiumStore((s) => s.isReady);
   const hydrate = useBoardStore((s) => s.hydrate);
   const activeTheme = useBoardStore((s) => s.activeTheme);
+  const setDailyThemeId = useBoardStore((s) => s.setDailyThemeId);
   const chooseTheme = useBoardStore((s) => s.chooseTheme);
   const finish = useBoardStore((s) => s.finish);
   const resultFor = useBoardStore((s) => s.resultFor);
@@ -63,6 +65,20 @@ export default function Home() {
       if (peekTimer.current) clearTimeout(peekTimer.current);
     };
   }, [hydrate]);
+
+  const storeThemeId = useBoardStore((s) => s.themeId);
+  useEffect(() => {
+    // A player who has pinned their own theme (a premium choice) is never
+    // overridden by the day's featured theme, so there's nothing to fetch.
+    if (storeThemeId !== null || playing) return;
+    let cancelled = false;
+    void fetchThemeFor(day).then((theme) => {
+      if (!cancelled) setDailyThemeId(day, theme.id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [day, storeThemeId, playing, setDailyThemeId]);
 
   const themeId = activeTheme(day);
   const todayResult = resultFor(day);
@@ -87,7 +103,13 @@ export default function Home() {
   );
 
   const flip = (card: Card) => {
-    if (!playing || card.matched || faceUp.includes(card.id) || faceUp.length === 2) return;
+    if (
+      !playing ||
+      card.matched ||
+      faceUp.includes(card.id) ||
+      faceUp.length === 2
+    )
+      return;
     const next = [...faceUp, card.id];
     setFaceUp(next);
     const total = flips + 1;
@@ -97,7 +119,9 @@ export default function Home() {
 
     const [a, b] = next.map((id) => cards.find((c) => c.id === id)!);
     if (isPair(a!, b!)) {
-      const matched = cards.map((c) => (c.id === a!.id || c.id === b!.id ? { ...c, matched: true } : c));
+      const matched = cards.map((c) =>
+        c.id === a!.id || c.id === b!.id ? { ...c, matched: true } : c,
+      );
       setCards(matched);
       setFaceUp([]);
       if (isCleared(matched)) complete(matched, total);
@@ -110,11 +134,12 @@ export default function Home() {
   };
 
   const pickTheme = (id: string) => {
-    if (chooseTheme(id, isPremium) === 'locked') router.push('/paywall');
+    if (chooseTheme(id, isPremium) === "locked") router.push("/paywall");
   };
 
   const gap = spacing.sm;
-  const cardSize = boardWidth > 0 ? (boardWidth - gap * (COLUMNS - 1)) / COLUMNS : 0;
+  const cardSize =
+    boardWidth > 0 ? (boardWidth - gap * (COLUMNS - 1)) / COLUMNS : 0;
   const days = streak(day);
 
   return (
@@ -132,12 +157,12 @@ export default function Home() {
       >
         <View style={styles.titleRow}>
           <Text variant="title" style={styles.grow}>
-            {t('appName')}
+            {t("appName")}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t('settingsTitle')}
-            onPress={() => router.push('/settings')}
+            accessibilityLabel={t("settingsTitle")}
+            onPress={() => router.push("/settings")}
             hitSlop={8}
             style={styles.iconSlot}
           >
@@ -145,10 +170,10 @@ export default function Home() {
           </Pressable>
         </View>
 
-        <Text variant="heading">{t('todayTitle')}</Text>
+        <Text variant="heading">{t("todayTitle")}</Text>
         {days > 0 ? (
           <Text variant="caption" tone="muted">
-            {t('streakLabel', { n: days })}
+            {t("streakLabel", { n: days })}
           </Text>
         ) : null}
 
@@ -158,12 +183,16 @@ export default function Home() {
         >
           {cards.map((card, i) => {
             const shown = card.matched || faceUp.includes(card.id);
-            const state = card.matched ? t('cardMatched') : shown ? card.faceId : t('cardFaceDown');
+            const state = card.matched
+              ? t("cardMatched")
+              : shown
+                ? card.faceId
+                : t("cardFaceDown");
             return (
               <Pressable
                 key={card.id}
                 accessibilityRole="button"
-                accessibilityLabel={t('cardLabel', { n: i + 1, state })}
+                accessibilityLabel={t("cardLabel", { n: i + 1, state })}
                 accessibilityState={{ disabled: !playing || card.matched }}
                 onPress={() => flip(card)}
                 style={[
@@ -176,11 +205,15 @@ export default function Home() {
                     // face-down one by 1.45:1 in dark mode, which is close to
                     // invisible; this gives 2.21:1 dark and 1.79:1 light while
                     // keeping the face text above 7:1 on the tinted ground.
-                    backgroundColor: shown ? withAlpha(colors.accent, 0.38) : colors.surface,
+                    backgroundColor: shown
+                      ? withAlpha(colors.accent, 0.38)
+                      : colors.surface,
                     // A FACE-DOWN tile is the board: at the start of a round every
                     // tile is face down, so if that state cannot be seen there is
                     // nothing on screen. `border` is 1.28:1 against the background.
-                    borderColor: card.matched ? colors.accent : colors.borderStrong,
+                    borderColor: card.matched
+                      ? colors.accent
+                      : colors.borderStrong,
                     borderWidth: card.matched ? 2 : StyleSheet.hairlineWidth,
                   },
                 ]}
@@ -200,11 +233,11 @@ export default function Home() {
                   style={{
                     fontSize: Math.round(cardSize * 0.46),
                     lineHeight: Math.round(cardSize * 0.46 * 1.3),
-                    textAlign: 'center',
-                    textAlignVertical: 'center',
+                    textAlign: "center",
+                    textAlignVertical: "center",
                   }}
                 >
-                  {shown ? (FACE_GLYPH[card.faceId] ?? '') : ''}
+                  {shown ? (FACE_GLYPH[card.faceId] ?? "") : ""}
                 </Text>
               </Pressable>
             );
@@ -213,16 +246,16 @@ export default function Home() {
 
         {playing ? (
           <Text variant="caption" tone="muted">
-            {t('flipsLabel')}: {flips}
+            {t("flipsLabel")}: {flips}
           </Text>
         ) : todayResult ? (
           <Surface>
-            <Text variant="heading">{t('clearedTitle')}</Text>
+            <Text variant="heading">{t("clearedTitle")}</Text>
             <Text variant="body">
-              {t('scoreLabel')}: {todayResult.score}
+              {t("scoreLabel")}: {todayResult.score}
             </Text>
             <Text variant="caption" tone="muted">
-              {t('flipsLabel')}: {todayResult.flips} · {t('timeLabel')}:{' '}
+              {t("flipsLabel")}: {todayResult.flips} · {t("timeLabel")}:{" "}
               {Math.round(todayResult.ms / 1000)}s
             </Text>
           </Surface>
@@ -230,14 +263,14 @@ export default function Home() {
 
         {playing ? null : (
           <Button
-            label={todayResult ? t('replayCta') : t('playCta')}
+            label={todayResult ? t("replayCta") : t("playCta")}
             icon="play"
             onPress={start}
           />
         )}
 
         <Text variant="heading" style={{ marginTop: spacing.base }}>
-          {t('themeTitle')}
+          {t("themeTitle")}
         </Text>
         <View style={[styles.chipRow, { gap: spacing.sm }]}>
           {THEMES.map((theme) => {
@@ -248,7 +281,7 @@ export default function Home() {
               <Pressable
                 key={theme.id}
                 accessibilityRole="button"
-                accessibilityLabel={allowed ? name : t('themeLocked', { name })}
+                accessibilityLabel={allowed ? name : t("themeLocked", { name })}
                 accessibilityState={{ selected: chosen, disabled: !allowed }}
                 onPress={() => pickTheme(theme.id)}
                 style={[
@@ -258,7 +291,9 @@ export default function Home() {
                     paddingHorizontal: spacing.base,
                     borderWidth: StyleSheet.hairlineWidth,
                     borderColor: chosen ? colors.accent : colors.border,
-                    backgroundColor: chosen ? withAlpha(colors.accent, 0.16) : colors.surface,
+                    backgroundColor: chosen
+                      ? withAlpha(colors.accent, 0.16)
+                      : colors.surface,
                   },
                 ]}
               >
@@ -267,14 +302,16 @@ export default function Home() {
                     the people who need it most; the lock icon and the
                     accessibility label carry the meaning instead. */}
                 <Text variant="body">{name}</Text>
-                {allowed ? null : <Feather name="lock" size={14} color={colors.textMuted} />}
+                {allowed ? null : (
+                  <Feather name="lock" size={14} color={colors.textMuted} />
+                )}
               </Pressable>
             );
           })}
         </View>
         {isPremium ? null : (
           <Text variant="caption" tone="muted">
-            {t('themeFollowsDay')}
+            {t("themeFollowsDay")}
           </Text>
         )}
       </ScrollView>
@@ -284,16 +321,21 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  titleRow: { flexDirection: "row", alignItems: "center" },
   grow: { flex: 1 },
   iconSlot: {
     minWidth: MIN_TOUCH_TARGET,
     minHeight: MIN_TOUCH_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  board: { flexDirection: 'row', flexWrap: 'wrap' },
-  card: { alignItems: 'center', justifyContent: 'center' },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: MIN_TOUCH_TARGET },
+  board: { flexDirection: "row", flexWrap: "wrap" },
+  card: { alignItems: "center", justifyContent: "center" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap" },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minHeight: MIN_TOUCH_TARGET,
+  },
 });
