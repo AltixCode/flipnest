@@ -42,7 +42,8 @@ export default function Home() {
   const isReady = usePremiumStore((s) => s.isReady);
   const hydrate = useBoardStore((s) => s.hydrate);
   const activeTheme = useBoardStore((s) => s.activeTheme);
-  const setDailyThemeId = useBoardStore((s) => s.setDailyThemeId);
+  const setDailyTheme = useBoardStore((s) => s.setDailyTheme);
+  const dailyThemeFaces = useBoardStore((s) => s.dailyThemeFaces);
   const chooseTheme = useBoardStore((s) => s.chooseTheme);
   const finish = useBoardStore((s) => s.finish);
   const resultFor = useBoardStore((s) => s.resultFor);
@@ -73,23 +74,30 @@ export default function Home() {
     if (storeThemeId !== null || playing) return;
     let cancelled = false;
     void fetchThemeFor(day).then((theme) => {
-      if (!cancelled) setDailyThemeId(day, theme.id);
+      if (!cancelled) {
+        setDailyTheme(day, {
+          id: theme.id,
+          faces: theme.faces,
+          glyphs: theme.glyphs,
+        });
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [day, storeThemeId, playing, setDailyThemeId]);
+  }, [day, storeThemeId, playing, setDailyTheme]);
 
   const themeId = activeTheme(day);
+  const remoteTheme = dailyThemeFaces(day);
   const todayResult = resultFor(day);
 
   const start = useCallback(() => {
-    setCards(dealBoard(day, themeId));
+    setCards(dealBoard(day, themeId, remoteTheme?.faces));
     setFaceUp([]);
     setFlips(0);
     setStartedAt(Date.now());
     setPlaying(true);
-  }, [day, themeId]);
+  }, [day, themeId, remoteTheme]);
 
   const complete = useCallback(
     (finished: Card[], totalFlips: number) => {
@@ -237,7 +245,11 @@ export default function Home() {
                     textAlignVertical: "center",
                   }}
                 >
-                  {shown ? (FACE_GLYPH[card.faceId] ?? "") : ""}
+                  {shown
+                    ? (remoteTheme?.glyphs?.[card.faceId] ??
+                      FACE_GLYPH[card.faceId] ??
+                      "")
+                    : ""}
                 </Text>
               </Pressable>
             );

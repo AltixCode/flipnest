@@ -260,9 +260,16 @@ function hash(seed: number, salt: number): number {
  * what makes every board solvable by construction. There is no generate-and-check
  * step because there is nothing to check.
  */
-export function dealBoard(day: number, themeId = themeForDay(day)): Card[] {
-  const theme = THEMES.find((t) => t.id === themeId) ?? THEMES[0]!;
-  const faces = theme.faces.slice(0, PAIRS);
+export function dealBoard(
+  day: number,
+  themeId = themeForDay(day),
+  facesOverride?: string[],
+): Card[] {
+  const theme = THEMES.find((t) => t.id === themeId);
+  const faces = (facesOverride ?? theme?.faces ?? THEMES[0]!.faces).slice(
+    0,
+    PAIRS,
+  );
 
   const cards: Card[] = [];
   faces.forEach((faceId, i) => {

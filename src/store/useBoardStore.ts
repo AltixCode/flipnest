@@ -21,17 +21,31 @@ export interface DayResult {
   ms: number;
 }
 
+/** The day's theme as fetched from content-drip. `faces`/`glyphs` are kept
+ * alongside the id (not just the id) because a server-only theme — one added
+ * to content-drip after this build shipped — has no entry in the bundled
+ * `THEMES` list for `dealBoard` to look faces up from; see `dailyThemeFaces`. */
+export interface DailyRemoteTheme {
+  id: string;
+  faces: string[];
+  glyphs?: Record<string, string>;
+}
+
 interface BoardState {
   results: DayResult[];
   /** null means "follow the day", which is what a free player always gets. */
   themeId: string | null;
-  /** The day's theme id as fetched from content-drip, keyed by day. Populated
-   * asynchronously by a background fetch (see `src/content/sync.ts`); absent
-   * entries fall back to the local day-cycle in `activeTheme`. */
-  dailyThemeId: Record<number, string>;
+  /** Populated asynchronously by a background fetch (see
+   * `src/content/sync.ts`); absent entries fall back to the local day-cycle in
+   * `activeTheme`. */
+  dailyTheme: Record<number, DailyRemoteTheme>;
 
-  setDailyThemeId: (day: number, id: string) => void;
+  setDailyTheme: (day: number, theme: DailyRemoteTheme) => void;
   activeTheme: (day: number) => string;
+  /** The remote faces/glyphs for `day`, but only when nothing overrides the
+   * day's featured theme (no pinned `themeId`) and they're actually for the
+   * theme in play — never applied underneath a stale fetch or a manual pick. */
+  dailyThemeFaces: (day: number) => DailyRemoteTheme | undefined;
   chooseTheme: (id: string, isPremium: boolean) => "ok" | "locked" | "unknown";
   finish: (day: number, flips: number, ms: number) => void;
   resultFor: (day: number) => DayResult | undefined;
@@ -56,14 +70,20 @@ function validResults(value: unknown): DayResult[] {
 export const useBoardStore = create<BoardState>((set, get) => ({
   results: [],
   themeId: null,
-  dailyThemeId: {},
+  dailyTheme: {},
 
-  setDailyThemeId(day, id) {
-    set((s) => ({ dailyThemeId: { ...s.dailyThemeId, [day]: id } }));
+  setDailyTheme(day, theme) {
+    set((s) => ({ dailyTheme: { ...s.dailyTheme, [day]: theme } }));
   },
 
   activeTheme(day) {
-    return get().themeId ?? get().dailyThemeId[day] ?? themeForDay(day);
+    return get().themeId ?? get().dailyTheme[day]?.id ?? themeForDay(day);
+  },
+
+  dailyThemeFaces(day) {
+    if (get().themeId !== null) return undefined;
+    const remote = get().dailyTheme[day];
+    return remote && remote.id === get().activeTheme(day) ? remote : undefined;
   },
 
   chooseTheme(id, isPremium) {
