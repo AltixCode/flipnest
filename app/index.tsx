@@ -2,12 +2,13 @@ import Feather from "@expo/vector-icons/Feather";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BannerAdSlot } from "@/components/BannerAdSlot";
 import { Button, Card as Surface, Text } from "@/components/ui";
 import { fetchThemeFor } from "@/content/sync";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { t, type TranslationKey } from "@/i18n";
 import {
   PAIRS,
@@ -17,10 +18,10 @@ import {
   dayNumber,
   dealBoard,
   isCleared,
-  isPair,
   scoreBoard,
   type Card,
 } from "@/logic/board";
+import { resolvePendingMismatch, tapCard } from "@/logic/flipEngine";
 import { noteGameFinished } from "@/monetization/pacing";
 import { useBoardStore } from "@/store/useBoardStore";
 import { usePremiumStore } from "@/store/usePremiumStore";
@@ -37,6 +38,7 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const { colors, spacing, radius } = useTheme();
   const tabletColumn = useTabletColumn();
+  const play = useSoundEffects();
 
   const isPremium = usePremiumStore((s) => s.isPremium);
   const isReady = usePremiumStore((s) => s.isReady);
@@ -103,39 +105,59 @@ export default function Home() {
   );
 
   const flip = (card: Card) => {
-    if (
-      !playing ||
-      card.matched ||
-      faceUp.includes(card.id) ||
-      faceUp.length === 2
-    )
-      return;
-    const next = [...faceUp, card.id];
-    setFaceUp(next);
+    // `!playing` covers "not started" and "already cleared"; everything else
+    // (an already-matched tile, or one of the two tiles currently mid-check)
+    // is a no-op `tapCard` itself recognises.
+    if (!playing) return;
+
+    const result = tapCard({ cards, faceUp }, card.id);
+    if (!result.opened) return;
+
+    // A tap is the thing that resolves whatever the previous tap left
+    // pending -- either it just cleared a stale mismatched pair itself
+    // (`clearedPriorMismatch`), or this tile is opening into a fresh check
+    // that will get its own timer below. Either way any peek timer from an
+    // earlier pair no longer applies.
+    if (peekTimer.current) {
+      clearTimeout(peekTimer.current);
+      peekTimer.current = null;
+    }
+
+    setCards(result.state.cards);
+    setFaceUp(result.state.faceUp);
     const total = flips + 1;
     setFlips(total);
     void Haptics.selectionAsync();
-    if (next.length < 2) return;
 
-    const [a, b] = next.map((id) => cards.find((c) => c.id === id)!);
-    if (isPair(a!, b!)) {
-      const matched = cards.map((c) =>
-        c.id === a!.id || c.id === b!.id ? { ...c, matched: true } : c,
-      );
-      setCards(matched);
-      setFaceUp([]);
-      if (isCleared(matched)) complete(matched, total);
+    if (result.matched) {
+      play("pop");
+      if (isCleared(result.state.cards)) complete(result.state.cards, total);
       return;
     }
-    // A mismatch stays visible briefly. Clearing in a timeout rather than in an
-    // effect keeps this an event: the player did something, and this is the
-    // consequence.
-    peekTimer.current = setTimeout(() => setFaceUp([]), PEEK_MS);
+
+    if (result.mismatched) {
+      play("fail");
+      // The exact pair this timer is watching. If a later tap clears it (or
+      // moves on to a different pair) before this fires, `resolvePendingMismatch`
+      // recognises the mismatch and is a no-op instead of double-clearing.
+      const watchedPair = result.state.faceUp;
+      peekTimer.current = setTimeout(() => {
+        setFaceUp((current) => resolvePendingMismatch(current, watchedPair));
+      }, PEEK_MS);
+      return;
+    }
+
+    // Just the first tile of a pair opening -- the flip sound.
+    play("tap");
   };
 
   const pickTheme = (id: string) => {
     if (chooseTheme(id, isPremium) === "locked") router.push("/paywall");
   };
+
+  const showTutorial = useCallback(() => {
+    Alert.alert(t("howToPlayTitle"), t("howToPlayBody"), [{ text: t("ok") }]);
+  }, []);
 
   const gap = spacing.sm;
   const cardSize =
@@ -161,6 +183,15 @@ export default function Home() {
           </Text>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={t("howToPlayCta")}
+            onPress={showTutorial}
+            hitSlop={8}
+            style={styles.iconSlot}
+          >
+            <Feather name="help-circle" size={20} color={colors.textMuted} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
             accessibilityLabel={t("settingsTitle")}
             onPress={() => router.push("/settings")}
             hitSlop={8}
@@ -176,6 +207,35 @@ export default function Home() {
             {t("streakLabel", { n: days })}
           </Text>
         ) : null}
+
+        {/* The win state lives above the board, not below it. A finished
+            board is a full 24-tile grid, and a "play again" control below
+            that meant scrolling past every tile to reach it -- exactly the
+            friction a tester reported. */}
+        {playing ? null : todayResult ? (
+          <Surface>
+            <Text variant="heading">{t("clearedTitle")}</Text>
+            <Text variant="body">
+              {t("scoreLabel")}: {todayResult.score}
+            </Text>
+            <Text variant="caption" tone="muted">
+              {t("flipsLabel")}: {todayResult.flips} · {t("timeLabel")}:{" "}
+              {Math.round(todayResult.ms / 1000)}s
+            </Text>
+          </Surface>
+        ) : null}
+
+        {playing ? null : (
+          <Button
+            label={todayResult ? t("replayCta") : t("playCta")}
+            icon="play"
+            onPress={start}
+            // Right-aligned to the far edge of the content column, so the
+            // control that starts the next game is exactly where a thumb
+            // already is after tapping through a finished board on the right.
+            style={{ alignSelf: "flex-end" }}
+          />
+        )}
 
         <View
           onLayout={(e) => setBoardWidth(e.nativeEvent.layout.width)}
@@ -248,26 +308,7 @@ export default function Home() {
           <Text variant="caption" tone="muted">
             {t("flipsLabel")}: {flips}
           </Text>
-        ) : todayResult ? (
-          <Surface>
-            <Text variant="heading">{t("clearedTitle")}</Text>
-            <Text variant="body">
-              {t("scoreLabel")}: {todayResult.score}
-            </Text>
-            <Text variant="caption" tone="muted">
-              {t("flipsLabel")}: {todayResult.flips} · {t("timeLabel")}:{" "}
-              {Math.round(todayResult.ms / 1000)}s
-            </Text>
-          </Surface>
         ) : null}
-
-        {playing ? null : (
-          <Button
-            label={todayResult ? t("replayCta") : t("playCta")}
-            icon="play"
-            onPress={start}
-          />
-        )}
 
         <Text variant="heading" style={{ marginTop: spacing.base }}>
           {t("themeTitle")}

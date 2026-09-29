@@ -84,13 +84,11 @@ jest.mock("react-native-google-mobile-ads", () => {
       EARNED_REWARD: "rewarded_earned_reward",
     },
     AdsConsent: {
-      gatherConsent: jest
-        .fn()
-        .mockResolvedValue({
-          status: "NOT_REQUIRED",
-          canRequestAds: true,
-          privacyOptionsRequirementStatus: "NOT_REQUIRED",
-        }),
+      gatherConsent: jest.fn().mockResolvedValue({
+        status: "NOT_REQUIRED",
+        canRequestAds: true,
+        privacyOptionsRequirementStatus: "NOT_REQUIRED",
+      }),
       showPrivacyOptionsForm: jest.fn(),
     },
     AdsConsentDebugGeography: { OTHER: "OTHER", EEA: "EEA" },
@@ -110,6 +108,16 @@ jest.mock("react-native-purchases", () => ({
     removeCustomerInfoUpdateListener: jest.fn(),
   },
   LOG_LEVEL: { WARN: "WARN", DEBUG: "DEBUG" },
+}));
+
+jest.mock("expo-audio", () => ({
+  createAudioPlayer: jest.fn(() => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(),
+    remove: jest.fn(),
+  })),
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("expo-localization", () => ({
