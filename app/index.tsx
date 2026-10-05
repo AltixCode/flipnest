@@ -282,7 +282,7 @@ export default function Home() {
                 key={theme.id}
                 accessibilityRole="button"
                 accessibilityLabel={allowed ? name : t("themeLocked", { name })}
-                accessibilityState={{ selected: chosen, disabled: !allowed }}
+                accessibilityState={{ selected: chosen }}
                 onPress={() => pickTheme(theme.id)}
                 style={[
                   styles.chip,
